@@ -1,112 +1,88 @@
 # Rig Control — Multi-Camera + Multi-Sensor Synchronized Recorder
 
-**Plug-and-play** software: koi bhi PC/laptop par chala do, browser dashboard
-khulega, jahan se tum **3 mobile phones (ya USB/IP cameras)** ek click me
-add kar sakte ho, **3 sensors** me se jo chaho enable kar sakte ho — koi
-config file hand-edit karne ki zaroorat nahi.
+**Plug-and-play** software: Run it on any PC/laptop, and a browser dashboard will open. From there, you can add **3 mobile phones (or USB/IP cameras)** with a single click, and enable whichever of the **3 sensors** you want—no need to hand-edit any config files.
 
-Sab kuch synchronized timestamps ke saath record + label + log hota hai,
-taaki baad me camera aur sensor data ko match kiya ja sake.
+Everything is recorded, labeled, and logged with synchronized timestamps so that the camera and sensor data can be easily matched later.
 
 ---
 
-## 1. Ek baar install karo
+## 1. One-Time Installation
 
-**Windows:** `start_windows.bat` par double-click karo (Python already installed hona chahiye — https://python.org se le lo agar nahi hai).
+**Windows:** Double-click on `start_windows.bat` (Python must already be installed—download it from [https://python.org](https://python.org) if you don't have it).
 
 **Mac / Linux:**
+
 ```bash
 bash start_mac_linux.sh
-```
-
-Ye script khud dependencies install karega aur dashboard start karke
-browser me automatically khol dega: **http://localhost:5000**
-
-(Manually chalana ho to: `pip install -r requirements.txt` phir `python web/app.py`)
-
----
-
-## 2. Dashboard me "Setup" tab kholo
-
-### Cameras add karna (3 mobile phones):
-
-1. Har phone me **"IP Webcam"** app install karo (Android, Play Store pe free
-   milega). iPhone ke liye "DroidCam" ya similar app use karo.
-2. App khol ke **"Start server"** dabao — screen par ek URL dikhega jaise
-   `http://192.168.1.15:8080`.
-3. **Important:** Sab phones aur ye PC **same WiFi** par hone chahiye.
-4. Dashboard ke Setup tab me **"Scan network for phones"** button dabao —
-   automatically dhoond lega aur ek click me "Add this phone" kar dega.
-   (Agar scan kuch na dikhaye to source box me manually URL daal ke
-   "Test connection" phir "Add camera" dabao.)
-5. Yehi 3 baar karo — teeno phones add ho jayenge, alag-alag labels do
-   jaise "Front-View", "Side-View", "Top-View".
-
-USB webcam ya IP/RTSP camera bhi isi form se add ho jate hain — bas
-source me `0` (USB index) ya `rtsp://...` URL daal do.
-
-### Sensors choose karna (3 options):
-
-Setup tab me 3 sensor slots dikhenge, har ek me dropdown se type choose
-karo:
-- **Environmental** — Temperature / Humidity / Pressure
-- **Motion** — Accelerometer/Gyro + GPS
-- **Custom** — koi bhi Arduino jo JSON bhejta ho, bina code badle
-
-Jis sensor ko use karna hai uspe **"Enabled"** checkbox on karo:
-- Agar abhi hardware nahi hai to **"Simulate"** ON rakho — demo data
-  milega, clearly **"SIMULATED"** label ke saath (real data se confuse
-  nahi hoga).
-- Real hardware (Arduino/ESP32) available ho to **"Simulate"** OFF karo
-  aur dropdown se COM port choose karo (auto-detect hota hai).
-
-**"Save"** dabao — turant effect hoga, dashboard automatically live
-readings dikhana start kar dega.
-
----
-
-## 3. Recording start/stop
-
-Top-right corner me **"Start recording"** button — sabhi added cameras +
-enabled sensors ek saath, synchronized, record hone lagenge. **"Stop
-recording"** dabate hi session save ho jayega.
-
----
-
-## 4. Output kahan milega
 
 ```
+
+This script will automatically install the dependencies, start the dashboard, and open it in your browser: **http://localhost:5000**
+
+(To run it manually: execute `pip install -r requirements.txt`, followed by `python web/app.py`.)
+
+---
+
+## 2. Open the "Setup" Tab in the Dashboard
+
+### Adding Cameras (3 mobile phones):
+
+1. Install the **"IP Webcam"** app on each phone (available for free on the Android Play Store). For iPhones, use "DroidCam" or a similar app.
+2. Open the app and tap **"Start server"** — a URL like `[http://192.168.1.15:8080](http://192.168.1.15:8080)` will appear on the screen.
+3. **Important:** All phones and the PC must be connected to the **same WiFi network**.
+4. Click the **"Scan network for phones"** button in the dashboard's Setup tab—it will automatically find the devices and allow you to "Add this phone" with one click. (If the scan doesn't detect anything, manually enter the URL in the source box, click "Test connection", and then "Add camera".)
+5. Repeat this process 3 times to add all three phones. Assign them different labels such as "Front-View", "Side-View", and "Top-View".
+
+USB webcams or IP/RTSP cameras can also be added using this same form—just enter `0` (for the USB index) or the `rtsp://...` URL into the source field.
+
+### Choosing Sensors (3 options):
+
+You will see 3 sensor slots in the Setup tab. Choose the sensor type from the dropdown for each:
+
+* **Environmental** — Temperature / Humidity / Pressure
+* **Motion** — Accelerometer/Gyro + GPS
+* **Custom** — Any Arduino that sends JSON, without modifying the code
+
+Turn on the **"Enabled"** checkbox for whichever sensor you want to use:
+
+* If you don't have the hardware connected yet, keep **"Simulate"** ON—you will receive demo data, clearly marked with a **"SIMULATED"** label (so it doesn't get confused with real data).
+* If real hardware (Arduino/ESP32) is available, turn **"Simulate"** OFF and select the COM port from the dropdown (it auto-detects).
+
+Click **"Save"**—the changes will take effect immediately, and the dashboard will automatically start showing live readings.
+
+---
+
+## 3. Starting/Stopping the Recording
+
+Click the **"Start recording"** button in the top-right corner—all added cameras and enabled sensors will begin recording simultaneously and synchronized. As soon as you click **"Stop recording"**, the session will be saved.
+
+---
+
+## 4. Where to Find the Output
+
+```text
 output/
   session_2026-09-13_12-30-00/
-    <camera-id>_Front-View.mp4      <- labeled video (name+timestamp burnt in)
-    <camera-id>_Side-View.mp4
-    <camera-id>_Top-View.mp4
-    master_log.csv                  <- har tick: sabhi camera frame#s + sabhi sensor readings, ek row me
-    sensor_log.csv                  <- fine-grained, har sensor reading ka alag row
+    _Front-View.mp4      <- labeled video (name+timestamp burnt in)
+    _Side-View.mp4
+    _Top-View.mp4
+    master_log.csv                  <- every tick: all camera frame#s + all sensor readings in a single row
+    sensor_log.csv                  <- fine-grained, separate row for each sensor reading
+
 ```
 
-Dono CSV files me epoch timestamp hai, isliye video frames aur sensor
-data ko baad me precisely match kiya ja sakta hai.
+Both CSV files include epoch timestamps, which allows video frames and sensor data to be precisely matched later on.
 
 ---
 
-## 5. Doosre PC/Laptop par use karna
+## 5. Using on Another PC/Laptop
 
-Poora folder copy karo (ya zip share karo), waha `start_windows.bat`
-(Windows) ya `start_mac_linux.sh` (Mac/Linux) chala do. Dependencies
-khud install ho jayengi, config.yaml bhi khud ban jayega — same Setup
-flow se cameras/sensors add karo, bas.
+Copy the entire folder (or share the zip file), and run `start_windows.bat` (Windows) or `start_mac_linux.sh` (Mac/Linux) on the new machine. Dependencies will install automatically, and the `config.yaml` file will generate on its own—just add your cameras/sensors using the same Setup flow, and you are good to go.
 
 ---
 
 ## Troubleshooting
 
-- **Phone scan me kuch nahi mil raha?** — Phone aur PC same WiFi par
-  hain confirm karo, IP Webcam app me "Start server" dabaya hai confirm
-  karo, aur PC ka firewall local network requests block to nahi kar
-  raha check karo.
-- **Camera "CONNECTING" hi dikha rahi hai, LIVE nahi ho rahi?** — Source
-  URL/index galat ho sakta hai; Setup tab me "Test connection" use karo.
-- **Sensor panel khaali hai?** — Normal hai jab tak tum Setup se koi
-  sensor "Enabled" nahi karte — jaan-boojh kar aisa rakha hai taaki bina
-  wajah fake numbers na dikhein.
+* **Scan not finding any phones?** — Confirm that the phone and PC are on the same WiFi network, ensure you tapped "Start server" in the IP Webcam app, and check that your PC's firewall isn't blocking local network requests.
+* **Camera is stuck on "CONNECTING" and won't go LIVE?** — The Source URL or index might be incorrect; use "Test connection" in the Setup tab.
+* **Sensor panel is empty?** — This is normal until you mark a sensor as "Enabled" in Setup—this is done intentionally so that fake numbers aren't displayed unnecessarily.
