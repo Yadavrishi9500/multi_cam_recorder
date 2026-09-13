@@ -1,0 +1,44 @@
+# =========================================================
+# Multi-Camera + Multi-Sensor Recorder — Configuration
+# =========================================================
+# You normally do NOT need to hand-edit this file — use the
+# "Setup" tab in the web dashboard to scan for phones, add
+# cameras, and turn sensors on/off. It saves back here automatically.
+# =========================================================
+
+recording:
+  fps: 20
+  output_dir: "output"
+  video_codec: "mp4v"
+  overlay_label: true
+  session_name_prefix: "session"
+
+cameras: []
+
+sensors:
+  - id: sensor_1
+    type: environmental
+    label: "Sensor 1 (Environmental)"
+    port: null
+    baudrate: 9600
+    simulate: true
+    poll_hz: 2
+    enabled: false
+
+  - id: sensor_2
+    type: motion
+    label: "Sensor 2 (Motion + GPS)"
+    port: null
+    baudrate: 115200
+    simulate: true
+    poll_hz: 5
+    enabled: false
+
+  - id: sensor_3
+    type: custom
+    label: "Sensor 3 (Custom)"
+    port: null
+    baudrate: 9600
+    simulate: true
+    poll_hz: 2
+    enabled: false

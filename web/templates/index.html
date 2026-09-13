@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rig Control — Multi-Camera / Multi-Sensor Recorder</title>
+<style>
+  :root{
+    --bg: #0e1210;
+    --panel: #151a17;
+    --line: #2a322c;
+    --text: #dfe8e0;
+    --muted: #7e8c82;
+    --live: #ff5b45;
+    --ok: #4fd67a;
+    --amber: #e8a23a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family: 'Courier New', ui-monospace, monospace;
+    padding: 24px;
+  }
+  header{
+    display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px;
+    border-bottom:1px solid var(--line); padding-bottom:14px; margin-bottom:20px;
+  }
+  h1{ font-size:20px; letter-spacing:0.5px; margin:0; font-weight:600; }
+  h1 span{color:var(--muted); font-weight:400;}
+  .tabs{display:flex; gap:6px; margin-bottom:18px;}
+  .tab-btn{
+    background:var(--panel); border:1px solid var(--line); color:var(--muted);
+    padding:8px 16px; font-family:inherit; font-size:13px; cursor:pointer;
+  }
+  .tab-btn.active{color:var(--text); border-color:var(--amber); color:var(--amber);}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  .controls button{
+    background:var(--panel); border:1px solid var(--line); color:var(--text);
+    padding:9px 18px; font-family:inherit; font-size:13px; cursor:pointer;
+  }
+  #startBtn{border-color:var(--ok); color:var(--ok); margin-left:8px;}
+  #stopBtn{border-color:var(--live); color:var(--live); margin-left:8px;}
+  button:disabled{opacity:0.35; cursor:default;}
+  .rec-badge{display:none; align-items:center; gap:6px; font-size:12px; color:var(--live);}
+  .rec-badge.on{display:inline-flex;}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--live); animation:pulse 1.2s infinite;}
+  @keyframes pulse{50%{opacity:0.25;}}
+
+  .cams{display:grid; grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); gap:14px; margin-bottom:20px;}
+  .cam-card{background:var(--panel); border:1px solid var(--line);}
+  .cam-card .feed{width:100%; aspect-ratio:16/9; background:#000; display:block; object-fit:cover;}
+  .cam-card .meta{padding:8px 10px; font-size:12px; display:flex; justify-content:space-between; align-items:center; color:var(--muted);}
+  .cam-card .meta .label{color:var(--text);}
+  .status-tag{font-size:10px; padding:1px 6px; border:1px solid var(--line);}
+  .status-tag.ok{color:var(--ok); border-color:var(--ok);}
+  .status-tag.bad{color:var(--live); border-color:var(--live);}
+  .empty-hint{
+    border:1px dashed var(--line); color:var(--muted); padding:30px; text-align:center; font-size:13px;
+  }
+  .empty-hint button{margin-top:12px;}
+
+  .panel{background:var(--panel); border:1px solid var(--line); padding:16px; margin-bottom:16px;}
+  .panel h2{font-size:12px; text-transform:uppercase; letter-spacing:1px; margin:0 0 12px 0; color:var(--muted); font-weight:600;}
+  .sensor-row{border-top:1px solid var(--line); padding:8px 0; font-size:12px;}
+  .sensor-row:first-child{border-top:none;}
+  .sensor-row .name{color:var(--amber); margin-bottom:4px; display:flex; align-items:center; gap:8px;}
+  .sim-badge{font-size:9px; border:1px solid var(--muted); color:var(--muted); padding:0 5px;}
+  .sensor-row .kv{color:var(--muted);}
+  .sensor-row .kv b{color:var(--text); font-weight:400;}
+  .session-path{font-size:11px; color:var(--muted); word-break:break-all;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  label{display:block; font-size:11px; color:var(--muted); margin-bottom:4px; margin-top:10px;}
+  input[type=text], select{
+    width:100%; background:#0b0e0c; border:1px solid var(--line); color:var(--text);
+    padding:8px; font-family:inherit; font-size:13px;
+  }
+  .row{display:flex; gap:10px; align-items:center;}
+  .btn{background:#1c231e; border:1px solid var(--line); color:var(--text); padding:8px 14px; font-family:inherit; font-size:12px; cursor:pointer;}
+  .btn.primary{border-color:var(--ok); color:var(--ok);}
+  .btn.danger{border-color:var(--live); color:var(--live);}
+  .device-item{display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--line); padding:8px 0; font-size:12px;}
+  .device-item:first-child{border-top:none;}
+  .added-list{margin-top:10px;}
+  .small-muted{font-size:11px; color:var(--muted);}
+  .sensor-config-row{border-top:1px solid var(--line); padding:14px 0;}
+  .sensor-config-row:first-child{border-top:none;}
+  .checkbox-row{display:flex; align-items:center; gap:8px; margin-top:10px; font-size:12px; color:var(--muted);}
+  .checkbox-row input{width:auto;}
+  .toast{position:fixed; bottom:20px; right:20px; background:var(--panel); border:1px solid var(--amber); color:var(--amber); padding:10px 16px; font-size:12px; display:none;}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>RIG CONTROL <span>/ multi-camera + sensor capture</span></h1>
+    <div class="session-path" id="sessionPath">no active session</div>
+  </div>
+  <div class="controls">
+    <span class="rec-badge" id="recBadge"><span class="dot"></span>RECORDING</span>
+    <button id="startBtn" onclick="startRec()">Start recording</button>
+    <button id="stopBtn" onclick="stopRec()" disabled>Stop recording</button>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="live" onclick="showTab('live')">Live view</button>
+  <button class="tab-btn" data-tab="setup" onclick="showTab('setup')">Setup — cameras &amp; sensors</button>
+</div>
+
+<!-- ============ LIVE VIEW ============ -->
+<div class="view active" id="view-live">
+  <div id="camsGrid" class="cams"></div>
+
+  <div class="panel">
+    <h2>Sensor telemetry</h2>
+    <div id="sensorList">No sensors enabled yet. Go to Setup to add one.</div>
+  </div>
+</div>
+
+<!-- ============ SETUP ============ -->
+<div class="view" id="view-setup">
+
+  <div class="panel">
+    <h2>Step 1 — Add cameras (aim for 3 or more angles)</h2>
+
+    <div class="row" style="justify-content:space-between;">
+      <div class="small-muted">Scan your WiFi network for phone cameras (IP Webcam / DroidCam apps)</div>
+      <button class="btn primary" onclick="scanPhones()">Scan network for phones</button>
+    </div>
+    <div id="scanStatus" class="small-muted" style="margin-top:8px;"></div>
+    <div id="discoveredList" class="added-list"></div>
+
+    <div class="grid2" style="margin-top:18px; border-top:1px solid var(--line); padding-top:14px;">
+      <div>
+        <label>Camera label (e.g. "Front-View")</label>
+        <input type="text" id="camLabel" placeholder="Front-View">
+      </div>
+      <div>
+        <label>Source — USB index (0,1,2...) or URL (rtsp:// / http://)</label>
+        <input type="text" id="camSource" placeholder="0  or  http://192.168.1.15:8080/video">
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px;">
+      <button class="btn" onclick="testCamera()">Test connection</button>
+      <button class="btn primary" onclick="addCamera()">Add camera</button>
+      <span id="camTestResult" class="small-muted"></span>
+    </div>
+
+    <div class="added-list" id="addedCamsList">
+      <div class="small-muted">No cameras added yet.</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Step 2 — Choose sensors (3 slots available)</h2>
+    <div id="sensorConfigList"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let currentTab = 'live';
+function showTab(tab){
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.getElementById('view-live').classList.toggle('active', tab === 'live');
+  document.getElementById('view-setup').classList.toggle('active', tab === 'setup');
+  if (tab === 'setup') refreshSetup();
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.innerText = msg;
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+
+// ---------------- Live status polling ----------------
+let knownCamIds = [];
+async function poll(){
+  try{
+    const res = await fetch('/api/status');
+    const data = await res.json();
+
+    document.getElementById('recBadge').classList.toggle('on', data.recording);
+    document.getElementById('startBtn').disabled = data.recording;
+    document.getElementById('stopBtn').disabled = !data.recording;
+    document.getElementById('sessionPath').innerText = data.session_dir ? data.session_dir : 'no active session';
+
+    const camIds = Object.keys(data.cameras);
+    if (JSON.stringify(camIds) !== JSON.stringify(knownCamIds)){
+      knownCamIds = camIds;
+      renderCamGrid(data.cameras);
+    }
+    for (const [id, s] of Object.entries(data.cameras)){
+      const tag = document.getElementById('tag-' + id);
+      if (tag){
+        tag.innerText = s.connected ? 'LIVE' : 'CONNECTING';
+        tag.className = 'status-tag ' + (s.connected ? 'ok' : 'bad');
+      }
+    }
+
+    let sensorHtml = '';
+    const enabledSensors = Object.entries(data.sensors).filter(([id, s]) => s.enabled);
+    if (enabledSensors.length === 0){
+      sensorHtml = 'No sensors enabled yet. Go to Setup to add one.';
+    } else {
+      for (const [id, s] of enabledSensors){
+        const r = s.reading || {};
+        const kv = Object.entries(r).filter(([k]) => k !== 'timestamp')
+          .map(([k,v]) => `${k}: <b>${v}</b>`).join(' &nbsp; ') || 'waiting for data...';
+        const simBadge = s.simulate ? '<span class="sim-badge">SIMULATED</span>' : '';
+        sensorHtml += `<div class="sensor-row"><div class="name">${s.label} ${simBadge}</div><div class="kv">${kv}</div></div>`;
+      }
+    }
+    document.getElementById('sensorList').innerHTML = sensorHtml;
+
+    if (currentTab === 'setup') renderAddedCameras(data.cameras);
+  } catch(e){ console.error(e); }
+}
+
+function renderCamGrid(cameras){
+  const grid = document.getElementById('camsGrid');
+  const ids = Object.keys(cameras);
+  if (ids.length === 0){
+    grid.innerHTML = `<div class="empty-hint">No cameras added yet.<br>Go to the <b>Setup</b> tab to scan for phones or add a camera.
+      <br><button class="btn primary" onclick="showTab('setup')">Open Setup</button></div>`;
+    return;
+  }
+  grid.innerHTML = ids.map(id => `
+    <div class="cam-card">
+      <img class="feed" src="/video_feed/${id}" alt="${cameras[id].label}">
+      <div class="meta">
+        <span class="label">${cameras[id].label}</span>
+        <span class="status-tag" id="tag-${id}">--</span>
+      </div>
+    </div>`).join('');
+}
+
+function renderAddedCameras(cameras){
+  const el = document.getElementById('addedCamsList');
+  const ids = Object.keys(cameras);
+  if (ids.length === 0){
+    el.innerHTML = '<div class="small-muted">No cameras added yet.</div>';
+    return;
+  }
+  el.innerHTML = ids.map(id => `
+    <div class="device-item">
+      <div>${cameras[id].label} <span class="small-muted">(${cameras[id].source})</span>
+        <span class="status-tag ${cameras[id].connected ? 'ok' : 'bad'}">${cameras[id].connected ? 'LIVE' : 'CONNECTING'}</span></div>
+      <button class="btn danger" onclick="removeCamera('${id}')">Remove</button>
+    </div>`).join('');
+}
+
+setInterval(poll, 1000);
+poll();
+
+async function startRec(){ await fetch('/api/start', {method:'POST'}); poll(); }
+async function stopRec(){ await fetch('/api/stop', {method:'POST'}); poll(); }
+
+// ---------------- Camera setup ----------------
+async function scanPhones(){
+  document.getElementById('scanStatus').innerText = 'Scanning WiFi network... (few seconds)';
+  document.getElementById('discoveredList').innerHTML = '';
+  try{
+    const res = await fetch('/api/cameras/discover');
+    const data = await res.json();
+    if (data.devices.length === 0){
+      document.getElementById('scanStatus').innerText =
+        'No phone cameras found. Make sure the phone and this PC are on the SAME WiFi, and the IP Webcam / DroidCam app is open and streaming.';
+      return;
+    }
+    document.getElementById('scanStatus').innerText = `Found ${data.devices.length} device(s):`;
+    document.getElementById('discoveredList').innerHTML = data.devices.map(d => `
+      <div class="device-item">
+        <div>${d.name}</div>
+        ${d.already_added
+          ? '<span class="small-muted">already added</span>'
+          : `<button class="btn primary" onclick='quickAdd(${JSON.stringify(d.source_url)}, ${JSON.stringify(d.name)})'>Add this phone</button>`}
+      </div>`).join('');
+  } catch(e){
+    document.getElementById('scanStatus').innerText = 'Scan failed: ' + e;
+  }
+}
+
+async function quickAdd(sourceUrl, name){
+  const res = await fetch('/api/cameras/add', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({label: name, source: sourceUrl})
+  });
+  const data = await res.json();
+  if (data.ok){ toast('Camera added: ' + name); scanPhones(); poll(); }
+}
+
+async function testCamera(){
+  const source = document.getElementById('camSource').value.trim();
+  if (!source){ toast('Enter a source first'); return; }
+  document.getElementById('camTestResult').innerText = 'Testing...';
+  const res = await fetch('/api/cameras/test', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({source})
+  });
+  const data = await res.json();
+  document.getElementById('camTestResult').innerText = (data.ok ? '✓ ' : '✗ ') + data.message;
+}
+
+async function addCamera(){
+  const label = document.getElementById('camLabel').value.trim() || 'Camera';
+  const source = document.getElementById('camSource').value.trim();
+  if (!source){ toast('Enter a source first'); return; }
+  const res = await fetch('/api/cameras/add', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({label, source})
+  });
+  const data = await res.json();
+  if (data.ok){
+    toast('Camera added: ' + label);
+    document.getElementById('camLabel').value = '';
+    document.getElementById('camSource').value = '';
+    poll();
+  }
+}
+
+async function removeCamera(id){
+  await fetch('/api/cameras/remove', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id})
+  });
+  poll();
+}
+
+// ---------------- Sensor setup ----------------
+const SENSOR_TYPES = [
+  {value:'environmental', text:'Environmental (Temperature / Humidity / Pressure)'},
+  {value:'motion', text:'Motion (Accelerometer/Gyro) + GPS'},
+  {value:'custom', text:'Custom (any Arduino sending JSON)'},
+];
+
+async function refreshSetup(){
+  const [statusRes, portsRes] = await Promise.all([fetch('/api/status'), fetch('/api/sensors/ports')]);
+  const status = await statusRes.json();
+  const ports = (await portsRes.json()).ports;
+  renderSensorConfig(status.sensors, ports);
+  renderAddedCameras(status.cameras);
+}
+
+function renderSensorConfig(sensors, ports){
+  const el = document.getElementById('sensorConfigList');
+  el.innerHTML = Object.entries(sensors).map(([id, s]) => {
+    const typeOptions = SENSOR_TYPES.map(t =>
+      `<option value="${t.value}" ${t.value === s.type ? 'selected' : ''}>${t.text}</option>`).join('');
+    const portOptions = ['<option value="">-- none / simulate --</option>']
+      .concat(ports.map(p => `<option value="${p.device}" ${p.device === s.port ? 'selected' : ''}>${p.device} (${p.description})</option>`))
+      .join('');
+    return `
+    <div class="sensor-config-row" id="cfgrow-${id}">
+      <label>${s.label}</label>
+      <select id="type-${id}">${typeOptions}</select>
+      <div class="checkbox-row">
+        <input type="checkbox" id="enabled-${id}" ${s.enabled ? 'checked' : ''}> Enabled
+        <input type="checkbox" id="simulate-${id}" ${s.simulate ? 'checked' : ''} style="margin-left:16px;"> Simulate (demo data, no hardware needed)
+      </div>
+      <label>Serial port (only used when Simulate is OFF)</label>
+      <select id="port-${id}">${portOptions}</select>
+      <div class="row" style="margin-top:10px;">
+        <button class="btn primary" onclick="saveSensor('${id}')">Save</button>
+        <span class="small-muted">${s.enabled ? (s.simulate ? 'Currently: ON (simulated demo data)' : (s.connected ? 'Currently: ON (hardware connected)' : 'Currently: ON (waiting for hardware...)')) : 'Currently: OFF'}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function saveSensor(id){
+  const body = {
+    id,
+    type: document.getElementById('type-' + id).value,
+    label: document.querySelector(`#cfgrow-${id} label`).innerText,
+    enabled: document.getElementById('enabled-' + id).checked,
+    simulate: document.getElementById('simulate-' + id).checked,
+    port: document.getElementById('port-' + id).value,
+  };
+  const res = await fetch('/api/sensors/configure', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (data.ok){ toast('Sensor saved: ' + body.label); refreshSetup(); poll(); }
+}
+</script>
+
+</body>
+</html>
